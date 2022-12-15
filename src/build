@@ -1,0 +1,13 @@
+#!/bin/bash
+if [[ -f "client" ]]
+  then rm -rf client
+fi
+
+make client
+
+if [[ -f "server" ]]
+  then rm -rf server
+fi
+
+make server
+
