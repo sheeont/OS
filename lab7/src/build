@@ -1,0 +1,20 @@
+#!/bin/bash
+if [[ -f "tcpclient" ]]
+  then rm -rf tcpclient
+fi
+make tcpclient
+
+if [[ -f "tcpserver" ]]
+  then rm -rf tcpserver
+fi
+make tcpserver
+
+if [[ -f "udpclient" ]]
+  then rm -rf udpclient
+fi
+make udpclient
+
+if [[ -f "udpserver" ]]
+  then rm -rf udpserver
+fi
+make udpserver

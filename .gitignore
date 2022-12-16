@@ -3,3 +3,11 @@ server
 client.o
 server.o
 multModulo.o
+tcpclient
+tcpclient.o
+tcpserver
+tcpserver.o
+udpclient
+udpclient.o
+udpserver
+udpserver.o
