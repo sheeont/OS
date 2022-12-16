@@ -1,12 +1,16 @@
 #!/bin/bash
+if [[ -f "multModulo.o" ]]
+  then rm -rf multModulo.o
+fi
+
 if [[ -f "client" ]]
-  then rm -rf client
+  then rm -rf client client.o
 fi
 
 make client
 
 if [[ -f "server" ]]
-  then rm -rf server
+  then rm -rf server server.o
 fi
 
 make server

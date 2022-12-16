@@ -2,8 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cstring>
-#include <string>
+#include <string.h>
 #include <unistd.h>
 
 #include <getopt.h>
@@ -13,6 +12,7 @@
 #include <sys/types.h>
 
 #include "pthread.h"
+
 #include "multModulo.h"
 
 struct FactorialArgs {
@@ -21,16 +21,11 @@ struct FactorialArgs {
   uint64_t mod;
 };
 
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+uint64_t Factorial(const struct FactorialArgs *args) { //Вычисление
 
-uint64_t Factorial(const struct FactorialArgs *args) {
-  uint64_t ans = args->begin;
-
-  for(int i = args->begin + 1; i <= args->end; ++i)
-  {
-	  ans = MultModulo(ans, i, args->mod);
-  }
-
+    uint64_t ans = 1;
+	for(uint64_t i = args->begin; i < args->end; i++)
+		ans = MultModulo(ans, i, args->mod);
   return ans;
 }
 
@@ -42,8 +37,6 @@ void *ThreadFactorial(void *args) {
 int main(int argc, char **argv) {
   int tnum = -1;
   int port = -1;
-  
-  FILE* file;
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -63,21 +56,17 @@ int main(int argc, char **argv) {
       switch (option_index) {
       case 0:
         port = atoi(optarg);
-        // TODO: your code here
-		if (port <=0)
-        {
-          printf("port must be positive!\n");
-          return 1;
-        }
+         if (port <= 0) {
+                printf("port is a positive number\n");
+                 return 1;
+                }
         break;
       case 1:
         tnum = atoi(optarg);
-        // TODO: your code here
-		 if (tnum <=0)
-        {
-          printf("tnum must be positive!\n");
-          return 1;
-        }
+         if (tnum <= 0) {
+                printf("tnum is a positive number\n");
+                 return 1;
+                }
         break;
       default:
         printf("Index %d is out of options\n", option_index);
@@ -97,48 +86,38 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+  int server_fd = socket(AF_INET, SOCK_STREAM, 0); //Создаем сокет
   if (server_fd < 0) {
     fprintf(stderr, "Can not create server socket!");
     return 1;
   }
 
-  struct sockaddr_in server;
+  struct sockaddr_in server; //Структура описывающая сокет
   server.sin_family = AF_INET;
   server.sin_port = htons((uint16_t)port);
-  server.sin_addr.s_addr = htonl(INADDR_ANY);
+  server.sin_addr.s_addr = htonl(INADDR_ANY); //Все адреса локального хоста
 
   int opt_val = 1;
-  setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));
+  setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));//Установка сокета в SO_REUSEADDR
 
-  int err = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
+  int err = bind(server_fd, (struct sockaddr *)&server, sizeof(server)); //Привязывание адреса к сокеты
   if (err < 0) {
     fprintf(stderr, "Can not bind to socket!");
     return 1;
   }
 
-  err = listen(server_fd, 128);
+  err = listen(server_fd, 128);//Готовность к принятии данных
   if (err < 0) {
     fprintf(stderr, "Could not listen on socket\n");
     return 1;
   }
 
-  file = fopen("servers.txt", "a+");
-  if(file != NULL)
-  {
-  	std::string buf = "127.0.0.1:";
-  	buf += std::to_string(port);
-  	buf += "\n";
-  	fwrite(buf.c_str(), sizeof(char), buf.size(), file);
-  }
-  fclose(file);
-
   printf("Server listening at %d\n", port);
 
   while (true) {
-    struct sockaddr_in client;
-    socklen_t client_len = sizeof(client);
-    int client_fd = accept(server_fd, (struct sockaddr *)&client, &client_len);
+    struct sockaddr_in client; //Структура описывающая клиент
+    socklen_t client_len = sizeof(client); //Длина структуры
+    int client_fd = accept(server_fd, (struct sockaddr *)&client, &client_len);//Создание нового сокета и дескриптора для него
 
     if (client_fd < 0) {
       fprintf(stderr, "Could not establish new connection\n");
@@ -148,7 +127,7 @@ int main(int argc, char **argv) {
     while (true) {
       unsigned int buffer_size = sizeof(uint64_t) * 3;
       char from_client[buffer_size];
-      int read = recv(client_fd, from_client, buffer_size, 0);
+      int read = recv(client_fd, from_client, buffer_size, 0);//Получение данных
 
       if (!read)
         break;
@@ -170,32 +149,17 @@ int main(int argc, char **argv) {
       memcpy(&end, from_client + sizeof(uint64_t), sizeof(uint64_t));
       memcpy(&mod, from_client + 2 * sizeof(uint64_t), sizeof(uint64_t));
 
-      fprintf(stdout, "Receive: %lu %lu %lu\n", begin, end, mod);
-
-      uint64_t count = end - begin;
-      if (count < tnum)
-         tnum = count;
-      int part = count / tnum;
+      fprintf(stdout, "Receive: %llu %llu %llu\n", (unsigned long long)begin, (unsigned long long)end, (unsigned long long)mod);
 
       struct FactorialArgs args[tnum];
-      for (uint32_t i = 0; i < tnum; i++) {
-        // TODO: parallel somehow
-        args[i].begin = begin + i*part;
-        args[i].mod = mod;
-        if (i != 0)
-        {
-          args[i].begin++;
-        }
-        if (i == (tnum - 1))
-        {
-          args[i].end = end;
-        }
-        else
-        {
-          args[i].end = begin + (i+1)*part;
-        }
+      uint64_t dx = (end - begin)/tnum;
 
-		//Create pthread to calculate factorials
+      for (uint32_t i = 0; i < tnum; i++) {
+          
+        args[i].begin = begin + i*dx;
+        args[i].end   = (i == (tnum - 1)) ? end : begin + (i+1)*dx;
+        args[i].mod   = mod;
+
         if (pthread_create(&threads[i], NULL, ThreadFactorial,
                            (void *)&args[i])) {
           printf("Error: pthread_create failed!\n");
@@ -204,27 +168,24 @@ int main(int argc, char **argv) {
       }
 
       uint64_t total = 1;
-        for (int i = 0; i < tnum; i++) {
-		pthread_mutex_lock(&mut);
-		uint64_t result = 0;
-		pthread_join(threads[i], (void **)&result);
-		total = MultModulo(total, result, mod);
-		pthread_mutex_unlock(&mut);
+      for (uint32_t i = 0; i < tnum; i++) {
+        uint64_t result = 0;
+        pthread_join(threads[i], (void **)&result);
+        total = MultModulo(total, result, mod);
       }
 
-      printf("Total: %lu\n", total);
+      printf("Total: %llu\n", (unsigned long long)total);
 
-	  //Send data to client socket
       char buffer[sizeof(total)];
       memcpy(buffer, &total, sizeof(total));
-      err = send(client_fd, buffer, sizeof(total), 0);
+      err = send(client_fd, buffer, sizeof(total), 0); //Пересылка обратно
       if (err < 0) {
         fprintf(stderr, "Can't send data to client\n");
         break;
       }
     }
 
-    shutdown(client_fd, SHUT_RDWR);
+    shutdown(client_fd, SHUT_RDWR);//Завершение
     close(client_fd);
   }
 
